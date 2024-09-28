@@ -1,22 +1,62 @@
 ﻿using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Net.Http;
 using System.Windows.Forms;
+using Newtonsoft.Json.Linq;
 
 namespace WelcomeToLuna11
 {
     public partial class Form1 : Form
     {
+        private const string GithubApiUrl = "https://api.github.com/repos/xpluna/welcometoluna11/releases/latest";
+        private const string CurrentVersion = "1.0.0";
+
         public Form1()
         {
             InitializeComponent();
         }
+
+        private async void CheckForUpdates()
+        {
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    // GitHub requires a User-Agent header
+                    client.DefaultRequestHeaders.Add("User-Agent", "WelcometoLuna11");
+
+                    HttpResponseMessage response = await client.GetAsync(GithubApiUrl);
+                    response.EnsureSuccessStatusCode();
+
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                    JObject release = JObject.Parse(responseBody);
+
+                    string latestVersion = release["tag_name"]?.ToString();
+                    string releaseUrl = release["html_url"]?.ToString();
+
+                    if (IsNewerVersion(latestVersion, CurrentVersion))
+                    {
+                        MessageBox.Show($"A new version ({latestVersion}) is available! Download it here: {releaseUrl}", "Update Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show("You have the latest version.", "No Update Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error checking for updates: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private bool IsNewerVersion(string latestVersion, string currentVersion)
+        {
+            Version latest = new Version(latestVersion);
+            Version current = new Version(currentVersion);
+            return latest.CompareTo(current) > 0;
+        }
+
 
         private void Form1_Load(object sender, EventArgs e)
         {
